@@ -425,7 +425,8 @@ namespace Antmicro.Renode.Peripherals.SPI
                 USBEndpoint endpoint = null;
                 if(ep != 0)
                 {
-                    endpoint = device.USBCore.GetEndpoint((int)ep);
+                    Direction direction = outnin ? Direction.HostToDevice : Direction.DeviceToHost;
+                    endpoint = device.USBCore.GetEndpoint((int)ep, direction);
                     if(endpoint == null)
                     {
                         this.Log(LogLevel.Error, "Tried to access a non-existing EP #{0}", ep);
