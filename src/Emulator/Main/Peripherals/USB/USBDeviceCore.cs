@@ -29,7 +29,8 @@ namespace Antmicro.Renode.Core.USB
                              string serialNumber = null,
                              ushort vendorId = 0,
                              ushort productId = 0,
-                             Action<SetupPacket, byte[], Action<byte[]>> customSetupPacketHandler = null) : base(18, (byte)DescriptorType.Device)
+                             Action<SetupPacket, byte[], Action<byte[]>> customSetupPacketHandler = null,
+                             Func<int, Direction, USBEndpoint> customEndpointGetter = null) : base(18, (byte)DescriptorType.Device)
         {
             if(maximalPacketSize != PacketSize.Size8
                 && maximalPacketSize != PacketSize.Size16
@@ -40,6 +41,7 @@ namespace Antmicro.Renode.Core.USB
             }
 
             this.customSetupPacketHandler = customSetupPacketHandler;
+            this.customEndpointGetter = customEndpointGetter;
             this.device = device;
             configurations = new List<USBConfiguration>();
 
@@ -80,17 +82,24 @@ namespace Antmicro.Renode.Core.USB
 
         public USBEndpoint GetEndpoint(int endpointNumber, Direction direction)
         {
-            if(SelectedConfiguration == null)
+            if (customEndpointGetter != null)
             {
-                return null;
+                return customEndpointGetter(endpointNumber, direction);
             }
-
-            foreach(var iface in SelectedConfiguration.Interfaces)
+            else
             {
-                var ep = iface.Endpoints.FirstOrDefault(x => x.Identifier == endpointNumber && x.Direction == direction);
-                if(ep != null)
+                if(SelectedConfiguration == null)
                 {
-                   return ep;
+                    return null;
+                }
+
+                foreach(var iface in SelectedConfiguration.Interfaces)
+                {
+                    var ep = iface.Endpoints.FirstOrDefault(x => x.Identifier == endpointNumber && x.Direction == direction);
+                    if(ep != null)
+                    {
+                       return ep;
+                    }
                 }
             }
 
@@ -275,5 +284,6 @@ namespace Antmicro.Renode.Core.USB
         private readonly IUSBDevice device;
 
         private Action<SetupPacket, byte[], Action<byte[]>> customSetupPacketHandler;
+        private Func<int, Direction, USBEndpoint> customEndpointGetter;
     }
 }
