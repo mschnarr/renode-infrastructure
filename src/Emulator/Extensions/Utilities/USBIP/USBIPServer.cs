@@ -241,9 +241,10 @@ namespace Antmicro.Renode.Extensions.Utilities.USBIP
                             ? buffer.Skip(buffer.Count - additionalDataCount).Take(additionalDataCount).ToArray()
                             : null;
 
+                        URBHeader copy = (URBHeader)urbHeader.Clone();
                         device.USBCore.HandleSetupPacket(setupPacket, additionalData: additionalData, resultCallback: response =>
                         {
-                            SendResponse(GenerateURBReply(urbHeader, packet, response));
+                            SendResponse(GenerateURBReply(copy, packet, response));
                         });
                     }
                     else

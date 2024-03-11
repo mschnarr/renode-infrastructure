@@ -5,11 +5,12 @@
 // Full license text is available in 'licenses/MIT.txt'.
 //
 
+using System;
 using Antmicro.Renode.Utilities.Packets;
 
 namespace Antmicro.Renode.Extensions.Utilities.USBIP
 {
-    public struct URBHeader
+    public struct URBHeader : ICloneable
     {
         [PacketField]
         public URBCommand Command;
@@ -25,6 +26,11 @@ namespace Antmicro.Renode.Extensions.Utilities.USBIP
         public uint EndpointNumber;
         [PacketField]
         public uint FlagsOrStatus;
+
+        public object Clone()
+        {
+            return this.MemberwiseClone();
+        }
 
         public override string ToString()
         {
