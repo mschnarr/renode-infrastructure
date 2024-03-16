@@ -86,7 +86,10 @@ namespace Antmicro.Renode.Extensions.Utilities.USBIP
 
         private void SendResponse(IEnumerable<byte> bytes)
         {
-            server.Send(bytes);
+            lock (server)
+            {
+                server.Send(bytes);
+            }
 
 #if DEBUG_PACKETS
             this.Log(LogLevel.Noisy, "Count {0}: {1}", bytes.Count(), Misc.PrettyPrintCollectionHex(bytes));
