@@ -50,7 +50,8 @@ namespace Antmicro.Renode.Peripherals.Miscellaneous
         private void Update()
         {
             IRQ.Set((lfclkEventGenerated.Value && lfclkStartedEventEnabled.Value)
-                    || (hfclkEventGenerated.Value && hfclkStartedEventEnabled.Value));
+                    || (hfclkEventGenerated.Value && hfclkStartedEventEnabled.Value)
+                    || (usbPowerReadyEventGenerated.Value && usbPowerReadyEventEnabled.Value));
         }
 
         private void DefineRegisters()
@@ -89,7 +90,10 @@ namespace Antmicro.Renode.Peripherals.Miscellaneous
                 .WithReservedBits(2, 1)
                 .WithTaggedFlag("DONE", 3)
                 .WithTaggedFlag("CTTO", 4)
-                .WithReservedBits(5, 5)
+                .WithReservedBits(5, 2)
+                .WithTaggedFlag("USBDETECTED", 7)
+                .WithTaggedFlag("USBREMOVED", 8)
+                .WithFlag(9, out usbPowerReadyEventEnabled, name: "USBPWRRDY")
                 .WithTaggedFlag("CTSTARTED", 10)
                 .WithTaggedFlag("CTSTOPPED", 11)
                 .WithReservedBits(12, 20)
@@ -105,11 +109,25 @@ namespace Antmicro.Renode.Peripherals.Miscellaneous
                 .WithReservedBits(2, 1)
                 .WithTaggedFlag("DONE", 3)
                 .WithTaggedFlag("CTTO", 4)
-                .WithReservedBits(5, 5)
+                .WithReservedBits(5, 4)
+                .WithFlag(9,
+                    writeCallback: (_, value) => usbPowerReadyEventEnabled.Value &= !value,
+                    valueProviderCallback: _ => usbPowerReadyEventEnabled.Value, name: "USBPWRRDY")
                 .WithTaggedFlag("CTSTARTED", 10)
                 .WithTaggedFlag("CTSTOPPED", 11)
                 .WithReservedBits(12, 20)
                 .WithWriteCallback((_, __) => Update());
+
+            Registers.USBPowerReady.Define(this)
+                .WithFlag(0, out usbPowerReadyEventGenerated, name: "EVENTS_USBPWRRDY")
+                .WithReservedBits(1, 31)
+                .WithWriteCallback((_, __) => Update());
+
+            // FIXME: This is actually in the POWER peripheral, which is in the same location
+            Registers.USBRegStatus.Define(this)
+                .WithFlag(0, name: "VBUSDETECTED")
+                .WithFlag(1, name: "OUTPUTRDY")
+                .WithReservedBits(2, 30);
 
             Registers.LFCLKClockSource.Define(this)
                 .WithValueField(0, 2, out var lfclkSource, name: "SRC")
@@ -132,12 +150,23 @@ namespace Antmicro.Renode.Peripherals.Miscellaneous
                 .WithReservedBits(17, 15);
         }
 
+        public void SetUSB(bool val)
+        {
+            if (usbPowerReadyEventEnabled.Value && val)
+            {
+                usbPowerReadyEventGenerated.Value = val;
+                Update();
+            }
+        }
+
         private bool lfclkStarted;
         private bool hfclkStarted;
         private IFlagRegisterField lfclkStartedEventEnabled;
         private IFlagRegisterField lfclkEventGenerated;
         private IFlagRegisterField hfclkStartedEventEnabled;
         private IFlagRegisterField hfclkEventGenerated;
+        private IFlagRegisterField usbPowerReadyEventEnabled;
+        private IFlagRegisterField usbPowerReadyEventGenerated;
 
         private enum Registers
         {
@@ -165,7 +194,12 @@ namespace Antmicro.Renode.Peripherals.Miscellaneous
             HFXODebounceTime = 0x528,
             CallibrationTimerInterval = 0x538,
             TraceConfig = 0x55C,
-            LFRCModeConfiguration = 0x5B4
+            LFRCModeConfiguration = 0x5B4,
+
+            USBDetected = 0x11C,
+            USBRemoved = 0x120,
+            USBPowerReady = 0x124,
+            USBRegStatus = 0x438,
         }
     }
 }
