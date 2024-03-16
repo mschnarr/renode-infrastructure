@@ -49,6 +49,22 @@ namespace Antmicro.Renode.Core.USB
             }
         }
 
+        public event Action PacketSent
+        {
+            add
+            {
+                if(Direction != Direction.DeviceToHost)
+                {
+                    throw new ArgumentException("Writing from this descriptor is not supported");
+                }
+                packetSent += value;
+            }
+            remove
+            {
+                packetSent -= value;
+            }
+        }
+
         public void Reset()
         {
             lock(buffer)
@@ -102,6 +118,11 @@ namespace Antmicro.Renode.Core.USB
                     device.Log(LogLevel.Noisy, "Sending back {0} bytes: {1}", buffer.Peek().Count(), Misc.PrettyPrintCollectionHex(buffer.Peek()));
 #endif
                     callback(this, buffer.Dequeue());
+
+                    if (buffer.Count == 0 && packetSent != null)
+                    {
+                        packetSent();
+                    }
                 }
                 else
                 {
@@ -215,6 +236,7 @@ namespace Antmicro.Renode.Core.USB
         }
 
         private event Action<byte[]> dataWritten;
+        private event Action packetSent;
         private Action<USBEndpoint, IEnumerable<byte>> dataCallback;
 
         private readonly Queue<IEnumerable<byte>> buffer;
